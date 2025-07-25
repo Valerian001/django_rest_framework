@@ -1,132 +1,124 @@
+# 📘 API Documentation: Custom Token Authentication with Phone Number and OTP (Django REST Framework)
 
-# 📘 API Documentation: Token Authentication with Django REST Framework
+## 🔐 Overview
 
-This API uses **Token-based Authentication**. Clients must first obtain an authentication token using their credentials, then include that token in the `Authorization` header of subsequent requests.
-
----
-
-## 🔐 Authentication Flow
-
-1. Send username and password to the `/api/token/` endpoint.
-2. Receive an authentication token.
-3. Include the token in the `Authorization` header as:
-   ```
-   Authorization: Token your_token_here
-   ```
-4. Access protected endpoints.
+This API uses Token Authentication for secure access. Users register with their phone number and name. OTP is sent using EbulkSMS for phone verification. Once verified, users receive an authentication token for future requests.
 
 ---
 
-## 🔑 Obtain Authentication Token
+## 📥 1. Register User
 
-**Endpoint:**
+**POST** `/api/register/`
 
-```
-POST /api/token/
-```
+Send user data to initiate registration and trigger OTP sending to the phone.
 
-**Description:**
-
-Returns a token for a user given valid credentials.
-
-**Request Headers:**
-
-```
-Content-Type: application/json
-```
-
-**Request Body:**
-
+### Request Body
 ```json
 {
-  "username": "your_username",
-  "password": "your_password"
+  "name": "John Doe",
+  "phone_number": "2348012345678",
+  "password": "securepass123"
 }
 ```
 
-**Success Response:**
-
+### Response
 ```json
 {
-  "token": "abc123yourauthtoken"
+  "message": "OTP sent to phone."
 }
-```
-
-**Error Response (Invalid credentials):**
-
-```json
-{
-  "non_field_errors": ["Unable to log in with provided credentials."]
-}
-```
-
-**Example cURL:**
-
-```bash
-curl -X POST http://localhost:8000/api/token/ \
--H "Content-Type: application/json" \
--d '{"username": "admin", "password": "adminpass"}'
 ```
 
 ---
 
-## ✅ Protected Endpoint: HelloView
+## ✅ 2. Verify Phone Number
 
-**Endpoint:**
+**POST** `/api/verify-phone/`
 
-```
-GET /api/hello/
-```
+Verify the OTP sent to the user's phone and return a token.
 
-**Description:**
-
-Returns a greeting to authenticated users.
-
-**Request Headers:**
-
-```
-Authorization: Token your_token_here
-```
-
-**Success Response:**
-
+### Request Body
 ```json
 {
-  "message": "Hello, admin!"
+  "phone_number": "2348012345678",
+  "otp": "1234"
 }
 ```
 
-**Error Response (Unauthorized):**
-
+### Response
 ```json
 {
-  "detail": "Authentication credentials were not provided."
+  "token": "abc123tokenkey"
 }
 ```
 
-**Example cURL:**
-
-```bash
-curl -X GET http://localhost:8000/api/hello/ \
--H "Authorization: Token abc123yourauthtoken"
+### Error Response
+```json
+{
+  "error": "Invalid OTP"
+}
 ```
 
 ---
 
-## 📁 API Endpoint Summary
+## 🔑 3. Login
 
-| Method | Endpoint        | Authentication | Description                         |
-|--------|-----------------|----------------|-------------------------------------|
-| POST   | /api/token/     | ❌              | Obtain auth token using credentials |
-| GET    | /api/hello/     | ✅              | Return greeting for logged-in user  |
+**POST** `/api/login/`
+
+Authenticate using `phone_number` and `password` to receive a token.
+
+### Request Body
+```json
+{
+  "phone_number": "2348012345678",
+  "password": "securepass123"
+}
+```
+
+### Response
+```json
+{
+  "token": "abc123tokenkey"
+}
+```
 
 ---
 
-## 🧪 Testing Notes
+## 🔒 4. List Users
 
-- Use Postman or `curl` to obtain and test tokens.
-- Always include the token in the `Authorization` header.
-- Token must be sent with the `Token` prefix:
-  ```
-  Authorization: Token your_token_here
-  ```
+**GET** `/api/users/`
+
+Returns a list of all registered users. Requires token authentication.
+
+### Headers
+```
+Authorization: Token abc123tokenkey
+```
+
+### Response
+```json
+[
+  {
+    "id": 1,
+    "name": "John Doe",
+    "phone_number": "2348012345678"
+  },
+  ...
+]
+```
+
+---
+
+## 🌐 Summary of Endpoints
+
+| Endpoint              | Method | Auth Required | Description                  |
+|-----------------------|--------|----------------|------------------------------|
+| `/api/register/`      | POST   | ❌             | Initiate registration & OTP  |
+| `/api/verify-phone/`  | POST   | ❌             | Verify OTP & get token       |
+| `/api/login/`         | POST   | ❌             | Login and get token          |
+| `/api/users/`         | GET    | ✅             | List users (protected)       |
+
+---
+
+## 📩 SMS Gateway
+
+EbulkSMS API is used to send OTPs to users during registration. Ensure API credentials are correctly configured in `utils/sms.py`.
